@@ -1,0 +1,175 @@
+<div class="order-list-container">
+  <header class="order-list-header">
+    <div class="header-content">
+      <h1 class="title">
+        <mat-icon class="title-icon">list_alt</mat-icon>
+        Órdenes en Tiempo Real
+      </h1>
+      <div class="connection-status" [class.connected]="isConnected()" [class.disconnected]="!isConnected()">
+        <mat-icon>{{ isConnected() ? 'wifi' : 'wifi_off' }}</mat-icon>
+        <span>{{ isConnected() ? 'Conectado' : 'Desconectado' }}</span>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button mat-raised-button
+              color="primary"
+              (click)="reconnect()"
+              [disabled]="isConnected()"
+              class="action-button">
+        <mat-icon>refresh</mat-icon>
+        Reconectar
+      </button>
+      <button mat-raised-button
+              color="warn"
+              (click)="disconnect()"
+              [disabled]="!isConnected()"
+              class="action-button">
+        <mat-icon>wifi_off</mat-icon>
+        Desconectar
+      </button>
+    </div>
+  </header>
+
+  <div class="error-banner" *ngIf="hasError()">
+    <mat-icon>error_outline</mat-icon>
+    <span>{{ errorMessage() }}</span>
+    <button mat-icon-button (click)="reconnect()">
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </div>
+
+  <div class="content-wrapper">
+    <section class="orders-form-section">
+      <mat-card class="form-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>add_circle</mat-icon>
+            Nueva Orden
+          </mat-card-title>
+        </mat-card-header>
+
+        <mat-card-content>
+          <form (ngSubmit)="submitOrder()" class="order-form">
+            <mat-form-field appearance="outline" class="form-field">
+              <mat-label>ID de Orden</mat-label>
+              <input matInput
+                     [value]="newOrder().orderId"
+                     (input)="newOrder.set({...newOrder(), orderId: $any($event.target).value})"
+                     placeholder="ORD-001"
+                     required />
+              <mat-icon matPrefix>tag</mat-icon>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="form-field">
+              <mat-label>ID de Cliente</mat-label>
+              <input matInput
+                     [value]="newOrder().customerId"
+                     (input)="newOrder.set({...newOrder(), customerId: $any($event.target).value})"
+                     placeholder="CLI-001"
+                     required />
+              <mat-icon matPrefix>person</mat-icon>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="form-field">
+              <mat-label>Tipo de Orden</mat-label>
+              <mat-select [value]="newOrder().type"
+                          (selectionChange)="newOrder.set({...newOrder(), type: $event.value})">
+                <mat-option *ngFor="let type of orderTypes" [value]="type">
+                  {{ type }}
+                </mat-option>
+              </mat-select>
+              <mat-icon matPrefix>category</mat-icon>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="form-field">
+              <mat-label>Monto</mat-label>
+              <input matInput
+                     type="number"
+                     [value]="newOrder().amount"
+                     (input)="newOrder.set({...newOrder(), amount: +$any($event.target).value})"
+                     min="0"
+                     step="0.01"
+                     required />
+              <mat-icon matPrefix>attach_money</mat-icon>
+            </mat-form-field>
+
+            <button mat-raised-button
+                    color="accent"
+                    type="submit"
+                    [disabled]="isSubmitting()"
+                    class="submit-button">
+              <mat-spinner *ngIf="isSubmitting()" diameter="20"></mat-spinner>
+              <mat-icon *ngIf="!isSubmitting()">send</mat-icon>
+              <span>{{ isSubmitting() ? 'Enviando...' : 'Enviar Orden' }}</span>
+            </button>
+          </form>
+        </mat-card-content>
+      </mat-card>
+    </section>
+
+    <section class="orders-list-section">
+      <div class="section-header">
+        <h2 class="section-title">
+          <mat-icon>receipt_long</mat-icon>
+          Historial de Órdenes
+        </h2>
+        <mat-chip class="order-count-chip">
+          {{ orders().length }} ordenes
+        </mat-chip>
+      </div>
+
+      <div class="orders-grid" *ngIf="orders().length > 0; else noOrders">
+        <mat-card *ngFor="let order of orders()" class="order-card" [ngClass]="getStatusClass(order.status)">
+          <mat-card-header>
+            <div class="order-header">
+              <div class="order-id">
+                <mat-icon>{{ getTypeIcon(order.type) }}</mat-icon>
+                <span class="order-id-text">{{ order.orderId }}</span>
+              </div>
+              <mat-chip class="status-chip" [ngClass]="getStatusClass(order.status)">
+                {{ order.status }}
+              </mat-chip>
+            </div>
+          </mat-card-header>
+
+          <mat-card-content>
+            <div class="order-details">
+              <div class="detail-row">
+                <mat-icon>person</mat-icon>
+                <span class="detail-label">Cliente:</span>
+                <span class="detail-value">{{ order.customerId }}</span>
+              </div>
+
+              <div class="detail-row">
+                <mat-icon>category</mat-icon>
+                <span class="detail-label">Tipo:</span>
+                <span class="detail-value">{{ order.type }}</span>
+              </div>
+
+              <div class="detail-row">
+                <mat-icon>attach_money</mat-icon>
+                <span class="detail-label">Monto:</span>
+                <span class="detail-value amount">{{ formatAmount(order.amount) }}</span>
+              </div>
+
+              <div class="detail-row">
+                <mat-icon>schedule</mat-icon>
+                <span class="detail-label">Fecha:</span>
+                <span class="detail-value">{{ formatDate(order.timestamp) }}</span>
+              </div>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+
+      <ng-template #noOrders>
+        <div class="no-orders">
+          <mat-icon>inbox</mat-icon>
+          <p>No hay órdenes disponibles</p>
+          <span class="no-orders-hint">Conecta al stream de eventos para recibir órdenes en tiempo real</span>
+        </div>
+      </ng-template>
+    </section>
+  </div>
+</div>
